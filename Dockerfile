@@ -1,16 +1,29 @@
-FROM ubuntu:bionic
-SHELL ["/bin/bash", "-c"]
+FROM maven:3.6.1-jdk-8-slim
 
-### Installing ROS
+RUN apt-get update \
+    && apt-get install -y git
+RUN git clone https://github.com/owlcs/hermit-reasoner.git
 
-RUN apt-get update && apt-get install -y tzdata
+WORKDIR hermit-reasoner
 
-RUN echo "deb http://packages.ros.org/ros/ubuntu bionic main" > /etc/apt/sources.list.d/ros-latest.list && \
-    apt-get install curl -y && \
-    apt-get install gnupg -y && \
-    curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - && \
-    apt-get update
+# checkout Release 1.4.4.519
+RUN git checkout 57b79367f2b66f0b510598474efbde43195410cc
 
-RUN apt-get install ros-melodic-ros-base -y
-# reminder: because of Docker, /opt/ros/melodic/setup.bash needs to be sourced again every time it is needed.
+# Apply patch to build standalone jar file
+COPY Adding-assembly-target.patch Adding-assembly-target.patch
+RUN git apply Adding-assembly-target.patch
 
+# Install HermiT, skip tests
+RUN mvn clean install -DskipTests=true
+
+WORKDIR /github/workspace
+COPY knowrob.owl /github/workspace/knowrob.owl
+ENTRYPOINT [\
+    "java", \
+    "-Xmx1024M", \
+    "-jar", "/hermit-reasoner/target/org.semanticweb.hermit-1.4.4.519-jar-with-dependencies.jar", \
+    "--output", "hermit.output", \
+    "--classify", \
+    "--classifyOPs" \
+]
+CMD ["owl/SOMA-UGLY.owl"]
