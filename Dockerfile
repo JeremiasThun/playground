@@ -17,7 +17,7 @@ RUN git apply Adding-assembly-target.patch
 RUN mvn clean install -DskipTests=true
 
 WORKDIR /github/workspace
-COPY knowrob.owl /github/workspace/knowrob.owl
+COPY knowrob_with_urdf.owl /github/workspace/knowrob_with_urdf.owl
 ENTRYPOINT [\
     "java", \
     "-Xmx1024M", \
